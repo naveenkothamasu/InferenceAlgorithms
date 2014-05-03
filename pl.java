@@ -75,16 +75,14 @@ public class pl {
 				for (String q : queries) {
 					HashMap<String, Integer> localCount = new HashMap<String, Integer>();
 					copy(localCount, count);
-					System.out
-							.println(forwardChaining(kb, localCount, q, facts));
+					output.write(forwardChaining(kb, localCount, q, facts)+"\n");
 				}
 			} else if (taskNumber == 2) {
 				log.write("<Queue of Goals>#Relevant Rules/Fact#New Goal Introduced\n");
 				for (String q : queries) {
 					HashMap<String, Integer> localCount = new HashMap<String, Integer>();
 					copy(localCount, count);
-					System.out.println(backwardChaining(kb, localCount, q,
-							facts));
+					output.write(backwardChaining(kb, localCount, q, facts)+"\n");
 					log.write("-------------------------------------------------------------\n");
 				}
 			} else if (taskNumber == 3) {
@@ -92,7 +90,8 @@ public class pl {
 				for (String q : queries) {
 					HashMap<String, Integer> localCount = new HashMap<String, Integer>();
 					copy(localCount, count);
-					System.out.println(resolution(kb, localCount, q, facts));
+					//System.out.println(resolution(kb, localCount, q, facts));
+					output.write(resolution(kb, localCount, q, facts)+"\n");
 					log.write("-------------------------------------------------------------\n");
 				}
 			}
@@ -156,6 +155,7 @@ public class pl {
 								+ " # " + resolvent;
 						str = str.replaceAll(",", " OR");
 						//System.out.println(str);
+						log.write(str);
 					}
 				}
 				if (clauses.containsAll(newList)) {
@@ -307,6 +307,7 @@ public class pl {
 
 		LinkedList<String> agenda = new LinkedList<String>();
 		ArrayList<String> inferred = new ArrayList<String>();
+		ArrayList<String> logEntries = new ArrayList<String>();
 
 		for (String fact : facts) {
 			agenda.add(fact);
@@ -332,10 +333,15 @@ public class pl {
 							for (String s : facts) {
 								str += s + ", ";
 							}
-							str += "#" + val + " :- " + key + "# " + val;
-							log.write(str + "\n");
-							agenda.add(val);
-							facts.add(val);
+							if(!facts.contains(val)){
+								facts.add(val);
+								str += "#" + val + " :- " + key + "# " + val;
+								logEntries.add(str);
+								agenda.add(val);
+							}
+							for(String s : logEntries){
+								log.write(s + "\n");
+							}
 							log.write("-------------------------------------------------------------\n");
 						}
 					}
