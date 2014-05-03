@@ -5,10 +5,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Stack;
+import java.util.TreeSet;
 
 public class pl {
 
@@ -77,14 +79,22 @@ public class pl {
 							.println(forwardChaining(kb, localCount, q, facts));
 				}
 			} else if (taskNumber == 2) {
+				log.write("<Queue of Goals>#Relevant Rules/Fact#New Goal Introduced\n");
 				for (String q : queries) {
 					HashMap<String, Integer> localCount = new HashMap<String, Integer>();
 					copy(localCount, count);
 					System.out.println(backwardChaining(kb, localCount, q,
 							facts));
+					log.write("-------------------------------------------------------------\n");
 				}
-			} else if(taskNumber == 3){
-				
+			} else if (taskNumber == 3) {
+				log.write("Resolving clause 1#Resolving clause 2#Added clause \n");
+				for (String q : queries) {
+					HashMap<String, Integer> localCount = new HashMap<String, Integer>();
+					copy(localCount, count);
+					System.out.println(resolution(kb, localCount, q, facts));
+					log.write("-------------------------------------------------------------\n");
+				}
 			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -103,8 +113,124 @@ public class pl {
 		}
 	}
 
+	public static boolean doNotAdd = true;
+
+	public static String resolution(HashMap<String, String> kb,
+			HashMap<String, Integer> count, String q, ArrayList<String> facts)
+			throws IOException {
+
+		TreeSet<String> query = new TreeSet<String>();
+		query.add("-" + q);
+		
+		HashSet<TreeSet<String>> newList = new HashSet<TreeSet<String>>();
+		ArrayList<TreeSet<String>> clauses = new ArrayList<TreeSet<String>>();
+
+		TreeSet<String> cnf = null;
+		for (Entry<String, String> entry : kb.entrySet()) {
+			cnf = convertToCNF(entry);
+			clauses.add(cnf);
+		}
+		clauses.add(query);
+		for(String f : facts){
+			TreeSet<String> fact =  new TreeSet<String>();
+			fact.add(f);
+			clauses.add(fact);
+		}
+		
+		TreeSet<String> resolvent = new TreeSet<String>();
+		int itr = 1;
+		do {
+			log.write("ITERATION = " + itr++);
+			log.write("\n");
+			for (int i = 0; i < clauses.size(); i++) {
+				for (int j = i + 1; j < clauses.size(); j++) {
+					doNotAdd = true;
+					resolvent = resolve(clauses.get(i), clauses.get(j));
+					if (resolvent.isEmpty()) {
+						return "Yes";
+					}
+					if (!doNotAdd && !clauses.contains(resolvent)
+							&& !newList.contains(resolvent)) {
+						newList.add(resolvent);
+						String str = clauses.get(i) + " # " + clauses.get(j)
+								+ " # " + resolvent;
+						str = str.replaceAll(",", " OR");
+						//System.out.println(str);
+					}
+				}
+				if (clauses.containsAll(newList)) {
+					return "No";
+				}
+				clauses.addAll(newList);
+			}
+		} while (true);
+	}
+
+	public static TreeSet<String> resolve(TreeSet<String> treeSet,
+			TreeSet<String> treeSet2) {
+		TreeSet<String> resolvent = new TreeSet<String>();
+		for (String s1 : treeSet) {
+			if (s1.contains("-")) {
+				if (!treeSet2.contains("" + s1.charAt(1))) {
+					if (!resolvent.contains(s1)) {
+						resolvent.add(s1);
+					}
+				} else {
+					doNotAdd = false;
+				}
+			} else {
+				if (!treeSet2.contains("-" + s1)) {
+					if (!resolvent.contains(s1)) {
+						resolvent.add(s1);
+					}
+				} else {
+					doNotAdd = false;
+				}
+			}
+		}
+		for (String s2 : treeSet2) {
+			if (s2.contains("-")) {
+				if (!treeSet.contains("" + s2.charAt(1))) {
+					if (!resolvent.contains(s2)) {
+						resolvent.add(s2);
+					}
+				} else {
+					doNotAdd = false;
+				}
+			} else {
+				if (!treeSet.contains("-" + s2)) {
+					if (!resolvent.contains(s2)) {
+						resolvent.add(s2);
+					}
+				} else {
+					doNotAdd = false;
+				}
+			}
+		}
+
+		return resolvent;
+	}
+
+	public static TreeSet<String> convertToCNF(Entry<String, String> rule) {
+		TreeSet<String> newRule = new TreeSet<String>();
+		String key = rule.getKey().trim();
+		String val = rule.getValue().trim();
+		if (key.contains(",")) {
+			for (String s : key.split(",")) {
+				newRule.add("-" + s.trim());
+			}
+			newRule.add(val.trim());
+		} else {
+			newRule.add("-" + key);
+			newRule.add(val);
+		}
+		return newRule;
+
+	}
+
 	public static String backwardChaining(HashMap<String, String> kb,
-			HashMap<String, Integer> count, String q, ArrayList<String> facts) {
+			HashMap<String, Integer> count, String q, ArrayList<String> facts)
+			throws IOException {
 
 		Stack<String> s1 = new Stack<String>();
 		s1.add(q);
@@ -113,20 +239,25 @@ public class pl {
 	}
 
 	public static String bchelper(Stack<String> s1, HashMap<String, String> kb,
-			ArrayList<String> facts, ArrayList<String> processed) {
+			ArrayList<String> facts, ArrayList<String> processed)
+			throws IOException {
 
 		String p = null;
 		String[] prems = null;
 		while (!s1.isEmpty()) {
 			p = s1.pop();
+			log.write(p + " # ");
 			if (facts.contains(p)) {
+				log.write(p + " # N/A \n");
 				continue;
 			}
 			ArrayList<String> rules = getRules(kb, p);
 			if (rules.isEmpty()) {
+				log.write("# N/A # N/A\n");
 				return "No";
 			} else {
 				for (String rule : getRules(kb, p)) {
+					log.write(p + " :- " + rule + " # " + rule + "\n");
 					Stack<String> s2 = new Stack<String>();
 					fillStack(s2, s1);
 					prems = rule.split(",");
@@ -134,6 +265,7 @@ public class pl {
 						s2.push(s.trim());
 					}
 					if (processed.contains(p)) {
+						log.write(p + " # CYCLE DETECTED # N/A \n");
 						return "No";
 					} else {
 						processed.add(p);
